@@ -1,0 +1,192 @@
+{
+  "name": "Social Media Trends AI Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        864
+      ],
+      "id": "c79fe83f-2dd4-4721-b1e1-e7e94eb606fc",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=## SYSTEM / INSTRUCTIONS\n\nYou are a **research analyst focused on AI for analytics content strategy*.\n\nYou are given a dataset of YouTube videos returned from searches for **“AI agents” AND “analytics”**.\n\nThis dataset represents **adjacent content**, not direct coverage of AI for analytics.\n\nYour GOAL is to reason from this dataset to identify **promising content opportunities** for **AI for analytics**, even when direct examples are sparse.\n\n**GOAL**\n\n1. Identify **meaningful topic patterns or themes** present in the dataset.\n    - Return just ONE topic to start.\n2. For each theme:\n    - Explain *why this theme is relevant to AI for analytics*, even if the original videos are not explicitly about analytics.\n    - Propose **video ideas that should exist** in the AI for analytics space.\n3. For each proposed video idea:\n    - Provide a short hook (1 line).\n    - Cite **2–3 source videos** from the dataset that influenced the idea, including the URL\n    - Briefly explain **how the idea extrapolates** from those sources.\n\nOutput HTML fragment only (NOT a full document).\n- Do NOT include: <!DOCTYPE>, <html>, <head>, <meta>, <title>, <style>, <body>, code fences, or explanations.\n- Use only these tags: h2, h3, p, ul, li, strong, em, a, hr.\n- Keep it clean: no inline styles, no classes, no divs.\n\n**DATA TOOL ACCESS**\n\nYou have access to a read-only \"SELECT query\" PostgreSQL tool that can SELECT from the youtube_videos_clean table.\n\n- You have a total budget of 10 SQL queries.\n- You may make multiple requests, but you must synthesize insights across all retrieved data before producing your final output.\n- Do not attempt to retrieve the full dataset because the data is really big.\n- After completing your analysis, stop and return your answer.\n\nThe dataset contains these columns\n- title\n- publisher\n- view_count (do not use as this is pre-processed data, use view_count_numeric instead)\n- view_count_numeric \n- published_at  (do not use as this is pre-processed data, use published_at_days_ago instead)\n- published_at_days_ago\n- detail_url\n- duration\n- description\n- video_id\n- image\n\n**RULES**\n\n- You may only cite videos that exist in the dataset.\n- Do not invent topics that have no grounding in the data.\n- It is acceptable (and expected) that ideas are **derived**, not directly copied.\n- If the dataset does not support a strong idea, do not force one.\n- Quality > quantity.\n\n**OUTPUT FORMAT**\n\nFor each theme:\n\n- Theme name\n- Why it matters for AI for analytics\n- Video ideas:\n    - Title\n    - Hook\n    - Inspired by:\n        - Video title — channel — url/video_id\n        - (short explanation of the connection)\n\nNo filler. No generic AI advice. Use what is in the data to guide your thinking.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        864
+      ],
+      "id": "f37c8e9d-c197-4b24-b9d8-710b2693b6d0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "test",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        1184
+      ],
+      "id": "56346b7e-6a72-4e91-8bbc-0dd0157d9cc4",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Execute SELECT queries on the youtube_videos table. Use this to retrieve and analyze video data. Available columns: title, publisher, view_count, published_at, detail_url, duration, description, video_id, image. You can use WHERE, ORDER BY, LIMIT, and other SQL clauses as needed.",
+        "operation": "executeQuery",
+        "query": "={{ $fromAI('sql_query', 'The SELECT query to execute on the youtube_videos_clean table', 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -80,
+        1088
+      ],
+      "id": "bfdc97c0-ee91-49d9-a646-42fdc2c8cf1c",
+      "name": "SELECT query",
+      "credentials": {
+        "postgres": {
+          "id": "VrZjiH9Et9ZNFTMn",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        1088
+      ],
+      "id": "1a69f3c2-2765-4715-9500-0a9183a48604",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "0M3mdFIzqyNaTqDc",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "1Xy_YlPylGoXfh_QGHYAcdJEloe_rr1psyeuzLhyj09o",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        112,
+        864
+      ],
+      "id": "250992ea-8eca-4b5c-89c0-6ae1c38b2111",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "47m391LZ5ZjLFdUJ",
+          "name": "Google Docs account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SELECT query": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fa625f1d-c6f2-49e8-889d-6cdd0fee2446",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "acc64c07c0847545c58ce97db44c53875fb2b9f1ed44730e9a92f5cf360cc62c"
+  },
+  "id": "ZsbJbmCY2si4e1Tr",
+  "tags": []
+}
